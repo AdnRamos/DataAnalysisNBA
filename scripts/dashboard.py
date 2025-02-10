@@ -12,8 +12,8 @@ import numpy as np
 import plotly.graph_objects as go
 
 print("Coletando e processando dados...")
-# data_collect.main()
-# data_process.main()
+data_collect.main()
+data_process.main()
 
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
 
