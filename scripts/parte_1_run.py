@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+import dash
+from dash import dcc, html
+from dash.dependencies import Input, Output
 
 # ---------------------------
 # Funções de apoio
@@ -230,7 +233,7 @@ def grafico_barras_empilhado(wins_losses_df):
     ])
     fig.update_layout(barmode='stack', title="Vitórias vs. Derrotas (Empilhado)")
     fig.write_html("output/grafico_barras_empilhado.html")
-    fig.show()
+    return fig
 
 def grafico_barras_agrupado(wins_losses_df):
     """
@@ -251,7 +254,7 @@ def grafico_barras_agrupado(wins_losses_df):
     ])
     fig.update_layout(barmode='group', title="Vitórias e Derrotas - Casa vs. Fora")
     fig.write_html("output/grafico_barras_agrupado.html")
-    fig.show()
+    return fig
 
 def grafico_histograma(df):
     """
@@ -261,7 +264,7 @@ def grafico_histograma(df):
                        color_discrete_map={'W':'green', 'L':'red'},
                        title="Frequência de Vitórias e Derrotas")
     fig.write_html("output/grafico_histograma.html")
-    fig.show()
+    return fig
 
 def grafico_pizza(wins_losses_df):
     """
@@ -276,7 +279,7 @@ def grafico_pizza(wins_losses_df):
     ]
     fig = px.pie(names=labels, values=values, title="Distribuição de Resultados por Local")
     fig.write_html("output/grafico_pizza.html")
-    fig.show()
+    return fig
 
 def grafico_radar(df):
     """
@@ -304,7 +307,7 @@ def grafico_radar(df):
       title="Média de Pontos por Jogo - Casa vs. Fora"
     )
     fig.write_html("output/grafico_radar.html")
-    fig.show()
+    return fig
 
 def grafico_linha_sequencia(df):
     """
@@ -317,7 +320,7 @@ def grafico_linha_sequencia(df):
     fig = px.line(df, x="GAME_DATE", y="Resultado_Num", markers=True,
                   title="Sequência de Vitórias (1) e Derrotas (0) ao Longo da Temporada")
     fig.write_html("output/grafico_linha_sequencia.html")
-    fig.show()
+    return fig
 
 def grafico_custom_defensivo(df):
     """
@@ -335,62 +338,137 @@ def grafico_custom_defensivo(df):
     fig = px.bar(dados, x="Indicador", y="Média", color="Indicador", 
                  title="Média de Roubos de Bola e Tocos por Jogo", color_discrete_sequence=["purple", "orange"])
     fig.write_html("output/grafico_custom_defensivo.html")
-    fig.show()
+    return fig
 
+def carregar_dados_conferencia(base_dir="data/raw"):
+    """
+    Carrega os dados de classificação e times por conferência e retorna DataFrames.
+    
+    Parâmetros:
+      base_dir (str): Diretório base onde os dados brutos estão salvos.
+      
+    Retorna:
+      Tuple de DataFrames: (df_classificacao, df_times)
+    """
+    classificacao_path = os.path.join(base_dir, "classificacao_por_conferencia.csv")
+    times_path = os.path.join(base_dir, "times_por_conferencia.csv")
+
+    df_classificacao = pd.read_csv(classificacao_path)
+    df_times = pd.read_csv(times_path)
+    
+    return df_classificacao, df_times
+
+def grafico_classificacao_conferencia(df_classificacao):
+    """
+    Gera um gráfico de barras com a classificação dos times por conferência.
+    
+    Parâmetros:
+      df_classificacao (DataFrame): Dados de classificação dos times.
+    
+    Retorna:
+      fig: Objeto de figura do Plotly.
+    """
+    fig = px.bar(df_classificacao, 
+                 x='TeamName', 
+                 y='WinPCT', 
+                 color='Conferencia', 
+                 title='Classificação dos Times por Conferência',
+                 labels={'WinPCT': 'Percentual de Vitórias', 'TeamName': 'Times'})
+    return fig
 # ---------------------------
 # Função Principal para Gerar Relatórios e Gráficos (RF3 a RF10)
 # ---------------------------
-def main():
-    # Lista das temporadas
-    seasons = ['2023-24', '2024-25']
-    # Carregar os dados dos jogos do time
-    df_team = carregar_dados_team(seasons)
-    
-    if df_team.empty:
-        print("Nenhum dado de jogos do time foi carregado. Verifique os arquivos processados.")
-        return
 
-    # Converter GAME_DATE para datetime (caso não esteja)
-    df_team['GAME_DATE'] = pd.to_datetime(df_team['GAME_DATE'], errors='coerce')
+# Lista das temporadas
+seasons = ['2023-24', '2024-25']
+# Carregar os dados dos jogos do time
+df_team = carregar_dados_team(seasons)
+
+if df_team.empty:
+    print("Nenhum dado de jogos do time foi carregado. Verifique os arquivos processados.")
+
+
+# Converter GAME_DATE para datetime (caso não esteja)
+df_team['GAME_DATE'] = pd.to_datetime(df_team['GAME_DATE'], errors='coerce')
+
+# --- RF3: Totais de Vitórias e Derrotas ---
+wins_losses_df = calcular_wins_losses(df_team)
+print("RF3 - Totais de Vitórias e Derrotas:")
+print(wins_losses_df)
+
+# --- RF4: Totais Gerais de Dados do Time ---
+totais_df = calcular_totais_gerais(df_team)
+print("RF4 - Totais Gerais:")
+print(totais_df)
+
+# --- RF5: Divisão dos Dados ---
+divisao_df = calcular_divisao_dados(df_team)
+print("RF5 - Divisão dos Dados:")
+print(divisao_df)
+
+# --- RF6: Performance Defensiva ---
+defensiva_df = calcular_performance_defensiva(df_team)
+print("RF6 - Performance Defensiva:")
+print(defensiva_df)
+
+# --- RF7: Tabela de Jogos ---
+tabela_jogos = gerar_tabela_jogos(df_team)
+print("RF7 - Tabela de Jogos:")
+print(tabela_jogos.head())
+
+# --- RF8: Gráficos ---
+# grafico_barras_empilhado(wins_losses_df)
+# grafico_barras_agrupado(wins_losses_df)
+# grafico_histograma(df_team)
+# grafico_pizza(wins_losses_df)
+# grafico_radar(df_team)
+# grafico_linha_sequencia(df_team)
+# grafico_custom_defensivo(df_team)
+# app = dash.Dash(__name__)
+# app.title = "Dashboard NBA"
+
+# # Layout do app com abas
+# app.layout = html.Div([
+#     html.H1("Análise de Desempenho do Time - NBA", style={'textAlign': 'center'}),
     
-    # --- RF3: Totais de Vitórias e Derrotas ---
-    wins_losses_df = calcular_wins_losses(df_team)
-    print("RF3 - Totais de Vitórias e Derrotas:")
-    print(wins_losses_df)
+#     dcc.Tabs(id="tabs", value='tab1', children=[
+#         dcc.Tab(label='Vitórias e Derrotas', value='tab1'),
+#         dcc.Tab(label='Distribuição de Resultados', value='tab2'),
+#         dcc.Tab(label='Média de Pontos', value='tab3'),
+#         dcc.Tab(label='Vitórias/Derrotas por Local', value='tab4'),
+#         dcc.Tab(label='Histograma de Resultados', value='tab5'),
+#         dcc.Tab(label='Sequência de Vitórias e Derrotas', value='tab6'),
+#         dcc.Tab(label='Performance Defensiva', value='tab7')
+#     ]),
     
-    # --- RF4: Totais Gerais de Dados do Time ---
-    totais_df = calcular_totais_gerais(df_team)
-    print("RF4 - Totais Gerais:")
-    print(totais_df)
-    
-    # --- RF5: Divisão dos Dados ---
-    divisao_df = calcular_divisao_dados(df_team)
-    print("RF5 - Divisão dos Dados:")
-    print(divisao_df)
-    
-    # --- RF6: Performance Defensiva ---
-    defensiva_df = calcular_performance_defensiva(df_team)
-    print("RF6 - Performance Defensiva:")
-    print(defensiva_df)
-    
-    # --- RF7: Tabela de Jogos ---
-    tabela_jogos = gerar_tabela_jogos(df_team)
-    print("RF7 - Tabela de Jogos:")
-    print(tabela_jogos.head())
-    
-    # --- RF8: Gráficos ---
-    grafico_barras_empilhado(wins_losses_df)
-    grafico_barras_agrupado(wins_losses_df)
-    grafico_histograma(df_team)
-    grafico_pizza(wins_losses_df)
-    grafico_radar(df_team)
-    grafico_linha_sequencia(df_team)
-    grafico_custom_defensivo(df_team)
-    
-    # Os arquivos CSV já foram salvos em cada função (RF9)
-    # Os gráficos foram salvos em HTML e abertos no browser (RF10)
+#     html.Div(id='tabs-content')
+# ])
+
+# @app.callback(
+#     Output('tabs-content', 'children'),
+#     Input('tabs', 'value')
+# )
+# def render_content(tab):
+#     if tab == 'tab1':
+#         return dcc.Graph(figure=grafico_barras_empilhado(wins_losses_df))
+#     elif tab == 'tab2':
+#         return dcc.Graph(figure=grafico_pizza(wins_losses_df))
+#     elif tab == 'tab3':
+#         return dcc.Graph(figure=grafico_radar(df_team))
+#     elif tab == 'tab4':
+#         return dcc.Graph(figure=grafico_barras_agrupado(wins_losses_df))
+#     elif tab == 'tab5':
+#         return dcc.Graph(figure=grafico_histograma(df_team))
+#     elif tab == 'tab6':
+#         return dcc.Graph(figure=grafico_linha_sequencia(df_team))
+#     elif tab == 'tab7':
+#         return dcc.Graph(figure=grafico_custom_defensivo(df_team))
+
+# Os arquivos CSV já foram salvos em cada função (RF9)
+# Os gráficos foram salvos em HTML e abertos no browser (RF10)
 
 if __name__ == '__main__':
     # Cria o diretório de output se não existir
     os.makedirs("output", exist_ok=True)
-    main()
+    
+    # app.run_server(debug=True)
