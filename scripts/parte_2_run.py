@@ -138,14 +138,44 @@ def generate_histogram(df, column, title, output_file):
     return fig
 
 def generate_boxplot(df, column, title, output_file):
-    fig = px.box(df, y=column, title=title,
-                 labels={column: f"{column}"},
-                 points="all")
+    # Calcula estatísticas para anotações
+    quartis = df[column].quantile([0.25, 0.5, 0.75])
+    q1, median, q3 = quartis[0.25], quartis[0.5], quartis[0.75]
+    min_val = df[column].min()
+    max_val = df[column].max()
+    
+    fig = px.box(df, y=column, title=title, labels={column: f"{column}"}, points="all")
+
+    # Adiciona anotações para os quartis, valores mínimos e máximos
+    fig.add_annotation(x=0, y=min_val, text=f"Mínimo: {min_val:.2f}", showarrow=True, arrowhead=1, yshift=-10)
+    fig.add_annotation(x=0, y=q1, text=f"Q1: {q1:.2f}", showarrow=True, arrowhead=1, yshift=-10)
+    fig.add_annotation(x=0, y=median, text=f"Mediana: {median:.2f}", showarrow=True, arrowhead=1, yshift=-10)
+    fig.add_annotation(x=0, y=q3, text=f"Q3: {q3:.2f}", showarrow=True, arrowhead=1, yshift=-10)
+    fig.add_annotation(x=0, y=max_val, text=f"Máximo: {max_val:.2f}", showarrow=True, arrowhead=1, yshift=10)
+
     fig.update_layout(
         yaxis_title=column,
         title={'x': 0.5, 'xanchor': 'center'},
         margin=dict(l=40, r=40, t=60, b=40)
     )
+    
+    fig.write_html(output_file)
+    return fig
+
+def generate_time_series(df, player_name, metric, output_file):
+    df_player = df[df['Player_Name'] == player_name]
+    df_player = df_player.sort_values('Data do Jogo')
+
+    fig = px.line(df_player, x='Data do Jogo', y=metric, title=f"Evolução de {metric} ao longo do tempo - {player_name}",
+                  markers=True, labels={'Data do Jogo': 'Data', metric: metric})
+
+    fig.update_layout(
+        title={'x': 0.5, 'xanchor': 'center'},
+        xaxis_title="Data",
+        yaxis_title=metric,
+        margin=dict(l=40, r=40, t=60, b=40)
+    )
+
     fig.write_html(output_file)
     return fig
 

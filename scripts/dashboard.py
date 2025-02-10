@@ -31,7 +31,7 @@ melted_df_metrics = pd.melt(df_metrics, id_vars=['Player_Name'],
                             value_vars=['Média_PTS', 'Média_REB', 'Média_AST'], 
                             var_name='Métrica', value_name='Valor').dropna()
 
-# Função para calcular a porcentagem de desempenhos abaixo da média/mediana/moda
+# Funções para calcular a porcentagem de desempenhos abaixo da média, mediana e moda
 def calcular_porcentagens(df, coluna, referencia):
     total_jogos = len(df)
     abaixo_referencia = len(df[df[coluna] < referencia])
@@ -43,7 +43,9 @@ app.layout = html.Div([
         dcc.Tab(label='Análise do Time (Parte 1)', value='parte1'),
         dcc.Tab(label='Análise dos Jogadores (Parte 2)', value='parte2'),
     ]),
-    html.Div(id='tabs-content')
+    html.Div(id='tabs-content'),
+    html.Button('Salvar Dados em CSV', id='save-button', n_clicks=0),
+    html.Div(id='save-status')
 ])
 
 # Callback para atualizar o conteúdo conforme a aba
@@ -113,8 +115,19 @@ def update_parte2(tab):
         for player in df_processed_players['Player_Name'].unique():
             df_player = df_processed_players[df_processed_players['Player_Name'] == player]
             media_pts = df_player['PTS'].mean()
-            porcentagem_pts = calcular_porcentagens(df_player, 'PTS', media_pts)
-            porcentagens.append({'Player_Name': player, 'Porcentagem_Abaixo_Media_PTS': porcentagem_pts})
+            mediana_pts = df_player['PTS'].median()
+            moda_pts = df_player['PTS'].mode().iloc[0] if not df_player['PTS'].mode().empty else np.nan
+
+            porcentagem_media = calcular_porcentagens(df_player, 'PTS', media_pts)
+            porcentagem_mediana = calcular_porcentagens(df_player, 'PTS', mediana_pts)
+            porcentagem_moda = calcular_porcentagens(df_player, 'PTS', moda_pts)
+
+            porcentagens.append({
+                'Player_Name': player,
+                'Porcentagem_Abaixo_Media_PTS': porcentagem_media,
+                'Porcentagem_Abaixo_Mediana_PTS': porcentagem_mediana,
+                'Porcentagem_Abaixo_Moda_PTS': porcentagem_moda
+            })
 
         porcentagem_df = pd.DataFrame(porcentagens)
 
@@ -122,9 +135,11 @@ def update_parte2(tab):
             html.H3("Métricas dos Jogadores"),
             dcc.Graph(figure=px.bar(melted_df_metrics, x='Player_Name', y='Valor', color='Métrica',
                                     title='Métricas de Desempenho por Jogador', barmode='group')),
-            html.H3("Porcentagem de Jogos Abaixo da Média de Pontos"),
-            dcc.Graph(figure=px.bar(porcentagem_df, x='Player_Name', y='Porcentagem_Abaixo_Media_PTS',
-                                    title='Porcentagem de Jogos com Pontos Abaixo da Média'))
+            html.H3("Porcentagem de Jogos Abaixo da Média, Mediana e Moda de Pontos"),
+            dcc.Graph(figure=px.bar(porcentagem_df, x='Player_Name', 
+                                    y=['Porcentagem_Abaixo_Media_PTS', 'Porcentagem_Abaixo_Mediana_PTS', 'Porcentagem_Abaixo_Moda_PTS'],
+                                    title='Porcentagem de Jogos com Desempenho Abaixo da Média, Mediana e Moda',
+                                    barmode='group'))
         ])
     elif tab == 'tab2':
         return html.Div([
@@ -143,7 +158,8 @@ def update_parte2(tab):
                 id='graph-type',
                 options=[
                     {'label': 'Histograma', 'value': 'hist'},
-                    {'label': 'Box Plot', 'value': 'box'}
+                    {'label': 'Box Plot', 'value': 'box'},
+                    {'label': 'Time Line', 'value': 'line'}
                 ],
                 value='hist',
                 labelStyle={'display': 'inline-block', 'margin-right': '10px'}
@@ -166,9 +182,42 @@ def update_parte2(tab):
                 options=[{'label': team, 'value': team} for team in df_processed_players['Adversário'].unique()],
                 value=df_processed_players['Adversário'].unique()[0]
             ),
+            dcc.RadioItems(
+                id='location-filter',
+                options=[
+                    {'label': 'Todos', 'value': 'Todos'},
+                    {'label': 'Casa', 'value': 'Casa'},
+                    {'label': 'Fora', 'value': 'Fora'}
+                ],
+                value='Todos',
+                labelStyle={'display': 'inline-block', 'margin-right': '10px'}
+            ),
             html.Div(id='filtered-games-content')
         ])
 
+# Callback para filtragem de jogos específicos
+@app.callback(
+    Output('filtered-games-content', 'children'),
+    [Input('team-dropdown', 'value'), Input('location-filter', 'value')]
+)
+def update_filtered_games(selected_team, location_filter):
+    filtered_df = df_processed_players[df_processed_players['Adversário'] == selected_team]
+    
+    if location_filter != 'Todos':
+        filtered_df = filtered_df[filtered_df['Casa/Fora'] == location_filter]
+
+    jogos_casa = len(filtered_df[filtered_df['Casa/Fora'] == 'Casa'])
+    jogos_fora = len(filtered_df[filtered_df['Casa/Fora'] == 'Fora'])
+
+    return html.Div([
+        html.H4(f"Jogos contra {selected_team}"),
+        html.P(f"Total de Jogos em Casa: {jogos_casa}"),
+        html.P(f"Total de Jogos Fora: {jogos_fora}"),
+        dcc.Graph(figure=px.bar(filtered_df, x='Data do Jogo', y='PTS', color='Player_Name', title='Pontos por Jogo')),
+        dcc.Graph(figure=px.bar(filtered_df, x='Data do Jogo', y='REB', color='Player_Name', title='Rebotes por Jogo')),
+        dcc.Graph(figure=px.bar(filtered_df, x='Data do Jogo', y='AST', color='Player_Name', title='Assistências por Jogo'))
+    ])
+    
 # Callback para gráficos detalhados dos jogadores
 @app.callback(
     Output('graficos-content', 'children'),
@@ -190,22 +239,32 @@ def update_graficos(metric, player, graph_type):
             fig = parte2.generate_boxplot(df_player, 'REB', f'Box Plot de Rebotes - {player}', 'output/charts/reb_boxplot.html')
         elif metric == 'ast':
             fig = parte2.generate_boxplot(df_player, 'AST', f'Box Plot de Assistências - {player}', 'output/charts/ast_boxplot.html')
+    elif graph_type == 'line':
+        if metric == 'pts':
+            fig = parte2.generate_time_series(df_player, player, 'PTS', 'output/charts/pts_time_series.html')
+        elif metric == 'reb':
+            fig = parte2.generate_time_series(df_player, player, 'REB', 'output/charts/reb_time_series.html')
+        elif metric == 'ast':
+            fig = parte2.generate_time_series(df_player, player, 'AST', 'output/charts/ast_time_series.html')
     return dcc.Graph(figure=fig)
 
-# Callback para filtragem de jogos específicos
 @app.callback(
-    Output('filtered-games-content', 'children'),
-    [Input('team-dropdown', 'value')]
+    Output('save-status', 'children'),
+    [Input('save-button', 'n_clicks')]
 )
-def update_filtered_games(selected_team):
-    filtered_df = df_processed_players[df_processed_players['Adversário'] == selected_team]
-    return html.Div([
-        html.H4(f"Jogos contra {selected_team}"),
-        dcc.Graph(figure=px.bar(filtered_df, x='Data do Jogo', y='PTS', color='Player_Name', title='Pontos por Jogo')),
-        dcc.Graph(figure=px.bar(filtered_df, x='Data do Jogo', y='REB', color='Player_Name', title='Rebotes por Jogo')),
-        dcc.Graph(figure=px.bar(filtered_df, x='Data do Jogo', y='AST', color='Player_Name', title='Assistências por Jogo'))
-    ])
+def save_data(n_clicks):
+    if n_clicks > 0:
+        save_all_data_to_csv(df_processed_players, df_metrics, df_team)
+        return html.P('Dados salvos com sucesso!', style={'color': 'green'})
+    return ''
+def save_all_data_to_csv(df_players, df_metrics, df_team):
+    df_players.to_csv('output/players_data.csv', index=False)
+    df_metrics.to_csv('output/players_metrics.csv', index=False)
+    df_team.to_csv('output/team_data.csv', index=False)
+
+    print("Todos os dados foram salvos em arquivos CSV.")
 
 # Roda o app
 if __name__ == '__main__':
     app.run_server(debug=True)
+    
