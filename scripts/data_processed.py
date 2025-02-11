@@ -12,6 +12,7 @@ def tratar_dados(df, tipo='time'):
       - Exclui colunas irrelevantes (ex.: 'SALARIO')
       - Normaliza colunas numéricas (quando necessário)
       - Trata outliers com base no método IQR
+      - Arredonda valores de ponto flutuante para 2 casas decimais
 
     Parâmetros:
       df (DataFrame): DataFrame a ser tratado.
@@ -99,6 +100,10 @@ def tratar_dados(df, tipo='time'):
         if pts_max != pts_min:
             df_tratado['PTS_NORM'] = (df_tratado['PTS'] - pts_min) / (pts_max - pts_min)
 
+    # 10. Arredondar valores de ponto flutuante para 2 casas decimais
+    for col in df_tratado.select_dtypes(include=['float']).columns:
+        df_tratado[col] = df_tratado[col].round(2)
+
     # (Opcional) Exibir um resumo dos dados após tratamento
     print("Resumo dos dados após tratamento:")
     print(df_tratado.info())
@@ -144,9 +149,9 @@ def main():
     seasons = ['2023-24', '2024-25']
     
     # Diretório base onde os dados originais estão armazenados
-    base_input_dir = "data/raw"
+    base_input_dir = "scripts/data/raw"
     # Diretório base onde serão salvos os dados tratados
-    base_output_dir = os.path.join("data", "processed")
+    base_output_dir = os.path.join("scripts/data", "processed")
     
     for season in seasons:
         print(f"\n=== Processando temporada {season} ===")
@@ -166,10 +171,10 @@ def main():
         
         # (Opcional) Se houver arquivos de roster na mesma temporada,
         # por exemplo em data/<season>/roster, processa-os também.
-        roster_input_dir = os.path.join(base_input_dir, season, "roster")
-        roster_output_dir = os.path.join(base_output_dir, season, "roster")
+        team_input_dir = os.path.join(base_input_dir, season, "team")
+        team_output_dir = os.path.join(base_output_dir, season, "team")
         print(">> Processando dados do ROSTER:")
-        processar_arquivos(roster_input_dir, roster_output_dir, tipo='roster')
+        processar_arquivos(team_input_dir, team_output_dir, tipo='team')
 
 if __name__ == '__main__':
     main()

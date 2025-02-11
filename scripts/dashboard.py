@@ -1,5 +1,5 @@
 import dash
-from dash import html, dcc
+from dash import html, dcc, dash_table
 from dash.dependencies import Input, Output
 import parte_1_run as parte1
 import parte_2_run as parte2
@@ -10,18 +10,21 @@ import pandas as pd
 import plotly.express as px
 import numpy as np
 import plotly.graph_objects as go
+import plotly.express as px
 
-print("Coletando e processando dados...")
-data_collect.main()
-data_process.main()
+
+# print("Iniciando coleta dos dados...")
+# data_collect.main()
+# print("Iniciando processando dos dados...")
+
+# data_process.main()
 
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
 
 # Carrega dados da Parte 1
 df_team = parte1.carregar_dados_team(['2023-24', '2024-25'])
-wins_losses_df = parte1.calcular_wins_losses(df_team)
-df_classificacao, df_times = parte1.carregar_dados_conferencia()
-
+df_times_rf1 = parte1.listar_times_por_conferencia_rf1()
+df_classificacao_rf2 = parte1.obter_classificacao_atual_rf2()
 # Carrega dados da Parte 2
 df_players = parte2.load_all_players_data(['2023-24', '2024-25'])
 df_processed_players = parte2.process_player_log(df_players)
@@ -56,14 +59,15 @@ def update_tab(tab):
         return html.Div([
             html.H2("Análise do Time"),
             dcc.Tabs(id="tabs-parte1", value='tab1', children=[
-                dcc.Tab(label='Vitórias e Derrotas', value='tab1'),
-                dcc.Tab(label='Distribuição de Resultados', value='tab2'),
-                dcc.Tab(label='Média de Pontos', value='tab3'),
-                dcc.Tab(label='Vitórias/Derrotas por Local', value='tab4'),
-                dcc.Tab(label='Histograma de Resultados', value='tab5'),
-                dcc.Tab(label='Sequência de Vitórias e Derrotas', value='tab6'),
-                dcc.Tab(label='Performance Defensiva', value='tab7'),
-                dcc.Tab(label='Classificação dos Times', value='tab8'),
+                dcc.Tab(label="Dados Gerais (NF1..NF7)", value='tab1'),
+                dcc.Tab(label='Vitórias e Derrotas', value='tab2'),
+                dcc.Tab(label='Vitórias Derrotas Casa Fora', value='tab3'),
+                dcc.Tab(label='Histograma Vitorias e Derrotas', value='tab4'),
+                dcc.Tab(label='Vitórias/Derrotas por Local', value='tab5'),
+                dcc.Tab(label='Medias Pontos', value='tab6'),
+                dcc.Tab(label='Sequência de Vitórias e Derrotas', value='tab7'),
+                dcc.Tab(label='Dispersão exibindo equipes', value='tab8'),
+                dcc.Tab(label='Performance Defensiva', value='tab9'),
             ]),
             html.Div(id='tabs-content-parte1')
         ])
@@ -96,22 +100,128 @@ def update_tab(tab):
 )
 def update_parte1(tab):
     if tab == 'tab1':
-        return dcc.Graph(figure=parte1.grafico_barras_empilhado(wins_losses_df))
-    elif tab == 'tab2':
-        return dcc.Graph(figure=parte1.grafico_pizza(wins_losses_df))
-    elif tab == 'tab3':
-        return dcc.Graph(figure=parte1.grafico_radar(df_team))
-    elif tab == 'tab4':
-        return dcc.Graph(figure=parte1.grafico_barras_agrupado(wins_losses_df))
-    elif tab == 'tab5':
-        return dcc.Graph(figure=parte1.grafico_histograma(df_team))
-    elif tab == 'tab6':
-        return dcc.Graph(figure=parte1.grafico_linha_sequencia(df_team))
-    elif tab == 'tab7':
-        return dcc.Graph(figure=parte1.grafico_custom_defensivo(df_team))
-    elif tab == 'tab8':
-        return dcc.Graph(figure=parte1.grafico_classificacao_conferencia(df_classificacao))
+        # NF1: Lista de Times
+        df_times_rf1 = parte1.listar_times_por_conferencia_rf1()
+        df_formatted = parte1.format_times_by_conference_subcolumns(df_times_rf1)
+        table_times = parte1.generate_html_table_from_multiindex(df_formatted)
 
+        # NF2: Classificação
+        df_classificacao_rf2 = parte1.obter_classificacao_atual_rf2(output_dir="scripts/data/raw")
+        graf_classificacao = parte1.grafico_classificacao_conferencia(df_classificacao_rf2)  # se quiser exibir um gráfico simples na mesma aba
+
+        # NF3: Vitórias e Derrotas
+        # (Pressupondo que wins_losses_df já foi calculado em algum lugar, ou calcule agora)
+        wins_losses_df = parte1.calcular_wins_losses(df_team)
+
+        # NF4: Totais Gerais
+        df_totais_por_temporada = parte1.calcular_totais_gerais_por_temporada(df_team)
+
+        # NF5: Divisão de Dados
+        df_divisao = parte1.calcular_divisao_dados(df_team)
+
+        # NF6: Performance Defensiva
+        df_defensiva = parte1.calcular_performance_defensiva(df_team)
+
+        # NF7: Tabela de Jogos
+        tabela_jogos = parte1.gerar_tabela_jogos(df_team)
+
+        return html.Div([
+            html.H3("NF1: Lista de Times por Conferência"),
+            table_times,
+
+            html.H3("NF2: Classificação Atual dos Times"),
+            dcc.Graph(figure=graf_classificacao),  # Exemplo de gráfico pequeno na mesma aba
+
+            html.H3("NF3: Vitórias e Derrotas do Time"),
+            dash_table.DataTable(
+                data=wins_losses_df.to_dict('records'),
+                columns=[{"name": col, "id": col} for col in wins_losses_df.columns],
+                style_cell={'textAlign': 'center'},
+                style_header={'fontWeight': 'bold'},
+                page_size=10
+            ),
+
+            html.H3("NF4: Totais Gerais por Temporada"),
+            dash_table.DataTable(
+                data=df_totais_por_temporada.to_dict('records'),
+                columns=[{"name": col, "id": col} for col in df_totais_por_temporada.columns],
+                style_cell={'textAlign': 'center'},
+                style_header={'fontWeight': 'bold'},
+                page_size=10
+            ),
+
+            html.H3("NF5: Divisão dos Dados Totais"),
+            dash_table.DataTable(
+                data=df_divisao.to_dict('records'),
+                columns=[{"name": col, "id": col} for col in df_divisao.columns],
+                style_cell={'textAlign': 'center'},
+                style_header={'fontWeight': 'bold'},
+                page_size=10
+            ),
+
+            html.H3("NF6: Performance Defensiva"),
+            dash_table.DataTable(
+                data=df_defensiva.to_dict('records'),
+                columns=[{"name": col, "id": col} for col in df_defensiva.columns],
+                style_cell={'textAlign': 'center'},
+                style_header={'fontWeight': 'bold'},
+                page_size=10
+            ),
+
+            html.H3("NF7: Tabela de Jogos do Time"),
+            dash_table.DataTable(
+                data=tabela_jogos.to_dict('records'),
+                columns=[{"name": col, "id": col} for col in tabela_jogos.columns],
+                style_cell={'textAlign': 'center'},
+                style_header={'fontWeight': 'bold'},
+                page_size=10
+            ),
+        ])
+    elif tab == 'tab2':
+        df_wins_losses = parte1.calcular_wins_losses(df_team)  # seu DF com a Season
+        fig = parte1.grafico_barras_empilhado_express(df_wins_losses)
+        return html.Div([
+            html.H3("Vitórias e Derrotas (RF8)"),
+            dcc.Graph(figure=fig)
+        ])
+    elif tab == 'tab3':
+        df_losses = parte1.calcular_wins_losses(df_team)  # seu DF com a Season
+        return dcc.Graph(figure=parte1.grafico_barras_agrupado(df_losses))
+    elif tab == 'tab4':
+        return dcc.Graph(figure=parte1.grafico_histograma(df_team))
+    elif tab == 'tab5':
+        df_win = parte1.calcular_wins_losses(df_team)  # seu DF com a Season
+        return dcc.Graph(figure=parte1.grafico_pizza(df_win))
+    elif tab == 'tab6':
+        
+        fig = parte1.grafico_radar(df_team)
+        
+        return html.Div([
+            html.H3("Radar: Média de Pontos Marcados e Sofridos (Casa vs. Fora)"),
+            dcc.Graph(figure=fig)
+        ])
+    elif tab == 'tab7':
+        return dcc.Graph(figure=parte1.grafico_linha_sequencia(df_team))
+    elif tab == 'tab8':
+        tabela_jogos = parte1.gerar_tabela_jogos(df_team)
+        return html.Div([
+            html.H3("Jogos do Time (RF7)"),
+            dash_table.DataTable(
+                data=tabela_jogos.to_dict('records'),
+                columns=[{"name": col, "id": col} for col in tabela_jogos.columns],
+                style_cell={'textAlign': 'center'},
+                style_header={'fontWeight': 'bold'},
+                page_size=10
+            )
+        ])
+    
+    elif tab == 'tab9':
+        fig_def = parte1.grafico_custom_defensivo(df_team)
+        return html.Div([
+            html.H3("Indicadores Defensivos e Erros por Temporada"),
+            dcc.Graph(figure=fig_def)
+        ])    
+        
 @app.callback(
     Output('tabs-content-parte2', 'children'),
     [Input('tabs-parte2', 'value')]

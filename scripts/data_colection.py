@@ -7,7 +7,7 @@ from requests.exceptions import ConnectionError, Timeout
 
 def retry_request(func, *args, retries=5, delay=10, **kwargs):
     """
-    Tenta executar a funcão até um número especificado de tentativas em caso de erro de conexão.
+    Tenta executar a função até um número especificado de tentativas em caso de erro de conexão.
     """
     for attempt in range(retries):
         try:
@@ -42,7 +42,10 @@ def get_player_ids(roster_df, players):
         return {}
     return dict(zip(filtered['PLAYER'], filtered['PLAYER_ID']))
 
-def listar_times_por_conferencia(output_dir="data/raw"):
+# ---------------------------
+# RF1 – Listar Times por Conferência
+# ---------------------------
+def listar_times_por_conferencia(output_dir="scripts/data/raw"):
     """
     Lista todos os times da NBA agrupados por Conferência e salva em um arquivo CSV.
     """
@@ -65,7 +68,10 @@ def listar_times_por_conferencia(output_dir="data/raw"):
 
     return df_times
 
-def obter_classificacao_atual(output_dir="data/raw"):
+# ---------------------------
+# RF2 – Classificação Atual dos Times por Conferência
+# ---------------------------
+def obter_classificacao_atual(output_dir="scripts/data/raw"):
     """
     Obtém a classificação atual dos times da NBA agrupados por Conferência e salva em um arquivo CSV.
     """
@@ -99,31 +105,35 @@ def main():
     seasons = ['2023-24', '2024-25']
     players = ["Ja Morant", "Desmond Bane", "Jaren Jackson Jr."]
 
+    # Para cada temporada, processa os dados e salva também a classificação e a lista de times na pasta da temporada
     for season in seasons:
         safe_season = season.replace('/', '-')
-        season_dir = os.path.join("data/raw", safe_season)
+        season_dir = os.path.join("scripts/data/raw", safe_season)
         team_dir = os.path.join(season_dir, "team")
         players_dir = os.path.join(season_dir, "players")
-
+        
+        # Cria as pastas necessárias para a temporada
         os.makedirs(team_dir, exist_ok=True)
         os.makedirs(players_dir, exist_ok=True)
-
+        
         print(f"\n=== Processando temporada {season} ===")
-
+        
+        # Coleta dos jogos do time
         team_games = get_team_game_logs(team_id, season)
         team_games_filepath = os.path.join(team_dir, f"games_{safe_season}.csv")
         team_games.to_csv(team_games_filepath, index=False)
         print(f"Dados dos jogos do time salvos em: {team_games_filepath}")
         time.sleep(2)
-
+        
+        # Coleta do roster
         roster_df = get_team_roster(team_id, season)
         roster_filepath = os.path.join(team_dir, f"roster_{safe_season}.csv")
         roster_df.to_csv(roster_filepath, index=False)
         print(f"Dados do roster do time salvos em: {roster_filepath}")
         time.sleep(2)
-
+        
+        # Coleta dos dados dos jogadores
         player_ids = get_player_ids(roster_df, players)
-
         for player, player_id in player_ids.items():
             pgl_df = get_player_game_logs(player_id, season)
             safe_player = player.replace(' ', '_')
@@ -131,12 +141,13 @@ def main():
             pgl_df.to_csv(player_filepath, index=False)
             print(f"Dados dos jogos de {player} salvos em: {player_filepath}")
             time.sleep(3)
-
-    print("\n=== Listando Times por Conferência (RF1) ===")
-    listar_times_por_conferencia()
-
-    print("\n=== Obtendo Classificação Atual dos Times (RF2) ===")
-    obter_classificacao_atual()
+        
+        # RF1 e RF2: Gerar arquivos para a lista de times e a classificação, na pasta da temporada
+        print(f"\n=== Processando RF1 e RF2 para a temporada {season} ===")
+        listar_times_por_conferencia(output_dir=season_dir)
+        obter_classificacao_atual(output_dir=season_dir)
+    
+    print("\nColeta de dados concluída.")
 
 if __name__ == "__main__":
     main()

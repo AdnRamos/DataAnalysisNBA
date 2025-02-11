@@ -32,7 +32,7 @@ def load_players_data_from_folder(season, base_dir="data/processed"):
 # ============================================================================
 # 2. Função para carregar dados de todas as temporadas
 # ============================================================================
-def load_all_players_data(seasons, base_dir="data/processed"):
+def load_all_players_data(seasons, base_dir="scripts/data/processed"):
     df_list = []
     for season in seasons:
         df_season = load_players_data_from_folder(season, base_dir)
@@ -183,8 +183,8 @@ def generate_time_series(df, player_name, metric, output_file):
 # 6. Função Principal para complementar o que falta
 # ============================================================================
 def main():
-    os.makedirs("output", exist_ok=True)
-    os.makedirs(os.path.join("output", "charts"), exist_ok=True)
+    os.makedirs("scripts/output", exist_ok=True)
+    os.makedirs(os.path.join("scripts/output", "charts"), exist_ok=True)
     
     seasons = ["2023-24", "2024-25"]
     
@@ -194,17 +194,17 @@ def main():
         return
     
     df_processed = process_player_log(df_raw)
-    processed_output = os.path.join("output", "jogadores_logs_processados.csv")
+    processed_output = os.path.join("scripts/output", "jogadores_logs_processados.csv")
     df_processed.to_csv(processed_output, index=False)
     
     df_metrics = aggregate_player_metrics(df_processed)
-    metrics_output = os.path.join("output", "jogadores_metricas_agregadas.csv")
+    metrics_output = os.path.join("scripts/output", "jogadores_metricas_agregadas.csv")
     df_metrics.to_csv(metrics_output, index=False)
     
     unique_players = df_processed["Player_Name"].unique()
     for player in unique_players:
         df_player = df_processed[df_processed["Player_Name"] == player]
-        player_folder = os.path.join("output", "charts", player.replace(" ", "_"))
+        player_folder = os.path.join("scripts/output", "charts", player.replace(" ", "_"))
         os.makedirs(player_folder, exist_ok=True)
         for metric in ["PTS", "REB", "AST"]:
             hist_file = os.path.join(player_folder, f"{player.replace(' ', '_')}_{metric}_histogram.html")
