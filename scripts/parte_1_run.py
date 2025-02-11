@@ -1223,49 +1223,50 @@ def grafico_classificacao_conferencia(df_classificacao):
 # ---------------------------
 # Execução dos Cálculos e Geração de Arquivos (RF3 a RF10)
 # ---------------------------
+def main():
 # Lista das temporadas
-seasons = ['2023-24', '2024-25']
-# Carregar os dados dos jogos do time
-df_team = carregar_dados_team(seasons)
+    seasons = ['2023-24', '2024-25']
+    # Carregar os dados dos jogos do time
+    df_team = carregar_dados_team(seasons)
 
-if df_team.empty:
-    print("Nenhum dado de jogos do time foi carregado. Verifique os arquivos processados.")
-else:
-    # Converter GAME_DATE para datetime (caso não esteja)
-    if "GAME_DATE" in df_team.columns:
-        df_team['GAME_DATE'] = pd.to_datetime(df_team['GAME_DATE'], errors='coerce')
+    if df_team.empty:
+        print("Nenhum dado de jogos do time foi carregado. Verifique os arquivos processados.")
     else:
-        print("Aviso: Coluna GAME_DATE não encontrada no DataFrame.")
-    
-    # RF3 – Totais de Vitórias e Derrotas
-    wins_losses_df = calcular_wins_losses(df_team)
-    
-    # RF4 – Totais Gerais de Dados do Time
-    totais_df = calcular_totais_gerais_por_temporada(df_team)
-    
-    # RF5 – Divisão dos Dados
-    divisao_df = calcular_divisao_dados(df_team)
-    
-    # RF6 – Performance Defensiva
-    defensiva_df = calcular_performance_defensiva(df_team)
-    
-    # RF7 – Tabela de Jogos
-    tabela_jogos = gerar_tabela_jogos(df_team)
-    
-    # RF8 – Geração de Gráficos (os gráficos são salvos em HTML)
-    # Exemplos (descomente conforme necessário):
-    # grafico_barras_empilhado(wins_losses_df)
-    # grafico_barras_agrupado(wins_losses_df)
-    # grafico_histograma(df_team)
-    # grafico_pizza(wins_losses_df)
-    # grafico_radar(df_team)
-    # grafico_linha_sequencia(df_team)
-    # grafico_custom_defensivo(df_team)
-    
-    # RF1 e RF2: Carregar e exibir os dados de times e classificação a partir dos arquivos locais
-    df_times_rf1 = listar_times_por_conferencia_rf1()
-    
-    df_classificacao_rf2 = obter_classificacao_atual_rf2()
+        # Converter GAME_DATE para datetime (caso não esteja)
+        if "GAME_DATE" in df_team.columns:
+            df_team['GAME_DATE'] = pd.to_datetime(df_team['GAME_DATE'], errors='coerce')
+        else:
+            print("Aviso: Coluna GAME_DATE não encontrada no DataFrame.")
+        
+        # RF3 – Totais de Vitórias e Derrotas
+        wins_losses_df = calcular_wins_losses(df_team)
+        
+        # RF4 – Totais Gerais de Dados do Time
+        totais_df = calcular_totais_gerais_por_temporada(df_team)
+        
+        # RF5 – Divisão dos Dados
+        divisao_df = calcular_divisao_dados(df_team)
+        
+        # RF6 – Performance Defensiva
+        defensiva_df = calcular_performance_defensiva(df_team)
+        
+        # RF7 – Tabela de Jogos
+        tabela_jogos = gerar_tabela_jogos(df_team)
+        
+        # RF8 – Geração de Gráficos (os gráficos são salvos em HTML)
+        # Exemplos (descomente conforme necessário):
+        # grafico_barras_empilhado(wins_losses_df)
+        # grafico_barras_agrupado(wins_losses_df)
+        # grafico_histograma(df_team)
+        # grafico_pizza(wins_losses_df)
+        # grafico_radar(df_team)
+        # grafico_linha_sequencia(df_team)
+        # grafico_custom_defensivo(df_team)
+        
+        # RF1 e RF2: Carregar e exibir os dados de times e classificação a partir dos arquivos locais
+        df_times_rf1 = listar_times_por_conferencia_rf1()
+        
+        df_classificacao_rf2 = obter_classificacao_atual_rf2()
 
 
 if __name__ == '__main__':

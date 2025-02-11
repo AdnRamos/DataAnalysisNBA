@@ -14,10 +14,10 @@ import plotly.express as px
 
 
 # print("Iniciando coleta dos dados...")
-# data_collect.main()
+#data_collect.main()
 # print("Iniciando processando dos dados...")
 
-# data_process.main()
+#data_process.main()
 
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
 
@@ -101,13 +101,21 @@ def update_tab(tab):
 def update_parte1(tab):
     if tab == 'tab1':
         # NF1: Lista de Times
-        df_times_rf1 = parte1.listar_times_por_conferencia_rf1()
+        df_times_rf1 = parte1.listar_times_por_conferencia_rf1(output_dir="scripts/data/raw/2023-24")
         df_formatted = parte1.format_times_by_conference_subcolumns(df_times_rf1)
         table_times = parte1.generate_html_table_from_multiindex(df_formatted)
 
         # NF2: Classificação
-        df_classificacao_rf2 = parte1.obter_classificacao_atual_rf2(output_dir="scripts/data/raw")
+        df_classificacao_rf2 = parte1.obter_classificacao_atual_rf2(output_dir="scripts/data/raw/2023-24")
         graf_classificacao = parte1.grafico_classificacao_conferencia(df_classificacao_rf2)  # se quiser exibir um gráfico simples na mesma aba
+        
+        df_times_rf2 = parte1.listar_times_por_conferencia_rf1(output_dir="scripts/data/raw/2024-25")
+        df_formatted2 = parte1.format_times_by_conference_subcolumns(df_times_rf2)
+        table_times2 = parte1.generate_html_table_from_multiindex(df_formatted2)
+
+        # NF2: Classificação
+        df_classificacao_rf2_2 = parte1.obter_classificacao_atual_rf2(output_dir="scripts/data/raw/2024-25")
+        graf_classificacao2 = parte1.grafico_classificacao_conferencia(df_classificacao_rf2_2)  # se quiser exibir um gráfico simples na mesma aba
 
         # NF3: Vitórias e Derrotas
         # (Pressupondo que wins_losses_df já foi calculado em algum lugar, ou calcule agora)

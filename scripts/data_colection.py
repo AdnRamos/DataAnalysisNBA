@@ -45,11 +45,11 @@ def get_player_ids(roster_df, players):
 # ---------------------------
 # RF1 – Listar Times por Conferência
 # ---------------------------
-def listar_times_por_conferencia(output_dir="scripts/data/raw"):
+def listar_times_por_conferencia(season, output_dir="scripts/data/raw"):
     """
-    Lista todos os times da NBA agrupados por Conferência e salva em um arquivo CSV.
+    Lista todos os times da NBA agrupados por Conferência para uma temporada especificada e salva em um arquivo CSV.
     """
-    standings = retry_request(leaguestandings.LeagueStandings)
+    standings = retry_request(leaguestandings.LeagueStandings, season=season)
     df_standings = standings.get_data_frames()[0]
 
     conferencia_leste = df_standings[df_standings['Conference'] == 'East'][['TeamName', 'TeamID']]
@@ -61,23 +61,24 @@ def listar_times_por_conferencia(output_dir="scripts/data/raw"):
     df_times = pd.concat([conferencia_leste, conferencia_oeste], ignore_index=True)
     df_times.rename(columns={'TeamName': 'Nome', 'TeamID': 'ID'}, inplace=True)
 
-    os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, "times_por_conferencia.csv")
+    season_dir = os.path.join(output_dir)
+    os.makedirs(season_dir, exist_ok=True)
+    output_path = os.path.join(season_dir, "times_por_conferencia.csv")
     df_times.to_csv(output_path, index=False)
-    print(f"Lista de times por conferência salva em: {output_path}")
+    print(f"Lista de times por conferência para a temporada {season} salva em: {output_path}")
 
     return df_times
 
 # ---------------------------
 # RF2 – Classificação Atual dos Times por Conferência
 # ---------------------------
-def obter_classificacao_atual(output_dir="scripts/data/raw"):
+def obter_classificacao_atual(season, output_dir="scripts/data/raw"):
     """
-    Obtém a classificação atual dos times da NBA agrupados por Conferência e salva em um arquivo CSV.
+    Obtém a classificação atual dos times da NBA agrupados por Conferência para uma temporada especificada e salva em um arquivo CSV.
     """
-    standings = retry_request(leaguestandings.LeagueStandings)
+    standings = retry_request(leaguestandings.LeagueStandings, season=season)
     df_standings = standings.get_data_frames()[0]
-    
+
     print("Colunas disponíveis em df_standings:", df_standings.columns.tolist())
 
     columns_required = ['TeamName', 'Conference', 'WinPCT']
@@ -93,10 +94,12 @@ def obter_classificacao_atual(output_dir="scripts/data/raw"):
     standings_oeste['Conferencia'] = 'Oeste'
 
     df_classificacao = pd.concat([standings_leste, standings_oeste], ignore_index=True)
-    os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, "classificacao_por_conferencia.csv")
+    
+    season_dir = os.path.join(output_dir)
+    os.makedirs(season_dir, exist_ok=True)
+    output_path = os.path.join(season_dir, "classificacao_por_conferencia.csv")
     df_classificacao.to_csv(output_path, index=False)
-    print(f"Classificação atual por conferência salva em: {output_path}")
+    print(f"Classificação atual por conferência para a temporada {season} salva em: {output_path}")
 
     return df_classificacao
 
@@ -132,6 +135,9 @@ def main():
         print(f"Dados do roster do time salvos em: {roster_filepath}")
         time.sleep(2)
         
+        print(f"\n=== Processando RF1 e RF2 para a temporada {season} ===")
+        listar_times_por_conferencia(season,output_dir=season_dir)
+        obter_classificacao_atual(season,output_dir=season_dir)
         # Coleta dos dados dos jogadores
         player_ids = get_player_ids(roster_df, players)
         for player, player_id in player_ids.items():
@@ -143,9 +149,7 @@ def main():
             time.sleep(3)
         
         # RF1 e RF2: Gerar arquivos para a lista de times e a classificação, na pasta da temporada
-        print(f"\n=== Processando RF1 e RF2 para a temporada {season} ===")
-        listar_times_por_conferencia(output_dir=season_dir)
-        obter_classificacao_atual(output_dir=season_dir)
+        
     
     print("\nColeta de dados concluída.")
 
